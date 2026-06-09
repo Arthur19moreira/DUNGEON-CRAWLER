@@ -1,0 +1,610 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+
+
+#define PAREDE '*'
+#define ESPINHO '#'
+#define CAIXA 'k'
+#define BOTAO 'O'
+#define PORTA_FECHADA 'D'
+#define CHAVE '@'
+#define PORTA_ABERTA '='
+#define ESCADA 'L'
+#define MONSTRO_1 'X'
+#define MONSTRO_2 'Y'
+#define BOSS 'Z'
+#define VAZIO ' '
+
+
+typedef struct {
+    char nome[20];
+    int tipo; 
+} Arma;
+
+typedef struct {
+    int x, y;
+    char direcao;
+    int vidas;
+    int chaves;
+    Arma arma;
+    int tem_arma;
+} Jogador;
+
+typedef struct {
+    int x, y;
+    char tipo;
+    int ativo;
+} Monstro;
+
+
+void exibirMenu();
+void exibirTutorial();
+void jogar();
+void rodarVila(Jogador *j);
+void rodarAndar1(Jogador *j);
+void rodarAndar2(Jogador *j);
+void rodarAndar3(Jogador *j);
+
+
+void moverMonstros(char **mapa, int tam, Monstro *monstros, int qtd_monstros, Jogador *j, int *reiniciar);
+void realizarAtaque(char **mapa, int tam, Jogador *j, Monstro *monstros, int qtd_monstros);
+void interagirObjeto(char **mapa, int tam, Jogador *j, int andar, int *botao_pressionado);
+
+
+char** alocarMapa(int tam);
+void liberarMapa(char **mapa, int tam);
+void desenharJogo(char **mapa, int tam, Jogador *j, int andar);
+
+
+int main() {
+    srand(time(NULL)); 
+    int opcao = 0;
+
+    while (opcao != 3) {
+        exibirMenu();
+        printf("Escolha uma opcao: ");
+        if (scanf("%d", &opcao) != 1) {
+            while (getchar() != '\n'); 
+            continue;
+        }
+        getchar(); 
+
+        switch (opcao) {
+            case 1: jogar(); break;
+            case 2: exibirTutorial(); break;
+            case 3: printf("\nSaindo... Creditos: Desenvolvido pela equipe.\n"); break;
+            default: printf("\nOpcao invalida!\n"); break;
+        }
+    }
+    return 0;
+}
+
+
+void exibirMenu() {
+    printf("\n=================================\n");
+    printf("        DUNGEON CRAWLER          \n");
+    printf("=================================\n");
+    printf("1. Jogar\n");
+    printf("2. Tutorial\n");
+    printf("3. Sair (Creditos)\n");
+    printf("=================================\n");
+}
+
+
+void exibirTutorial() {
+    printf("\n================ HISTÓRIA E TUTORIAL ================\n");
+    printf("Historia: Voce eh um heroi que parte de sua Vila para explorar\n");
+    printf("uma masmorra perigosa de 3 andares e derrotar o Boss Final!\n\n");
+    printf("CONTROLES:\n");
+    printf("  W / A / S / D - Mover para Cima, Esquerda, Baixo, Direita\n");
+    printf("  I             - Interagir com objetos a frente\n");
+    printf("  O             - Atacar com a arma selecionada\n\n");
+    printf("SIMBOLOS:\n");
+    printf("  *, #, k, O, D, @, =, L, X, Y, Z\n");
+    printf("=====================================================\n");
+    printf("Pressione ENTER para voltar ao menu...");
+    getchar();
+}
+
+
+void jogar() {
+    Jogador heroi;
+    heroi.vidas = 3;
+    heroi.chaves = 0;
+    heroi.tem_arma = 0;
+    strcpy(heroi.arma.nome, "Nenhuma");
+    heroi.arma.tipo = 0;
+
+    
+    rodarVila(&heroi);
+    if (heroi.vidas > 0) rodarAndar1(&heroi);
+    if (heroi.vidas > 0) rodarAndar2(&heroi);
+    if (heroi.vidas > 0) rodarAndar3(&heroi);
+
+    if (heroi.vidas <= 0) {
+        printf("\n=================================\n");
+        printf("           GAME OVER!            \n");
+        printf("=================================\n");
+        printf("Pressione ENTER para voltar ao menu principal.");
+        getchar();
+    }
+}
+
+
+void rodarVila(Jogador *j) {
+    int tam = 10;
+    char **mapa = alocarMapa(tam);
+    
+    
+    for (int i=0; i<tam; i++) {
+        for (int j=0; j<tam; j++) {
+            if (i==0 || i==tam-1 || j==0 || j==tam-1) mapa[i][j] = PAREDE;
+            else mapa[i][j] = VAZIO;
+        }
+    }
+    
+    
+    j->x = 5; j->y = 2; j->direcao = '>';
+    mapa[j->x][j->y] = '>';
+    mapa[5][7] = 'N'; 
+    mapa[1][5] = ESCADA; 
+
+    int mapa_ativo = 1;
+    while (mapa_ativo && j->vidas > 0) {
+        desenharJogo(mapa, tam, j, 0);
+        printf("Comando: ");
+        char cmd;
+        scanf(" %c", &cmd);
+
+        int px = j->x, py = j->y;
+        char nd = j->direcao;
+
+        if (cmd == 'w' || cmd == 'W') { px--; nd = '^'; }
+        else if (cmd == 's' || cmd == 'S') { px++; nd = 'V'; }
+        else if (cmd == 'a' || cmd == 'A') { py--; nd = '<'; } // Correção para esquerda/direita nas coordenadas
+        else if (cmd == 'd' || cmd == 'D') { py++; nd = '>'; }
+        else if (cmd == 'i' || cmd == 'I') {
+            int fx = j->x, fy = j->y;
+            if (j->direcao == '^') fx--; else if (j->direcao == 'V') fx++;
+            else if (j->direcao == '<') fy--; else if (j->direcao == '>') fy++;
+            
+            if (fx >= 0 && fx < tam && fy >= 0 && fy < tam && mapa[fx][fy] == 'N') {
+                printf("\n[NPC]: Escolha sua arma:\n1 - Espada\n2 - Arco e Flecha\n3 - Cajado\nOpcao: ");
+                int escolha;
+                scanf("%d", &escolha);
+                j->tem_arma = 1;
+                if (escolha == 1) { j->arma.tipo = 1; strcpy(j->arma.nome, "Espada"); }
+                else if (escolha == 2) { j->arma.tipo = 2; strcpy(j->arma.nome, "Arco e Flecha"); }
+                else { j->arma.tipo = 3; strcpy(j->arma.nome, "Cajado"); }
+                printf("Voce equipou o %s!\n", j->arma.nome);
+                getchar(); getchar();
+            }
+        }
+
+        
+        if (cmd=='w'||cmd=='W'||cmd=='s'||cmd=='S'||cmd=='a'||cmd=='A'||cmd=='d'||cmd=='D') {
+            if (mapa[px][py] == ESCADA) {
+                if (j->tem_arma) {
+                    mapa_ativo = 0; 
+                } else {
+                    printf("\nVoce precisa escolher uma arma com o NPC antes de entrar!\n");
+                    getchar(); getchar();
+                }
+            } else if (mapa[px][py] == VAZIO) {
+                mapa[j->x][j->y] = VAZIO;
+                j->x = px; j->y = py; j->direcao = nd;
+                mapa[j->x][j->y] = nd;
+            } else {
+                j->direcao = nd;
+                mapa[j->x][j->y] = nd;
+            }
+        }
+    }
+    liberarMapa(mapa, tam);
+}
+
+
+void rodarAndar1(Jogador *j) {
+    int tam = 10;
+    char **mapa = alocarMapa(tam);
+    j->chaves = 0; 
+
+    
+    for (int i=0; i<tam; i++) {
+        for (int k=0; k<tam; k++) {
+            if (i==0 || i==tam-1 || k==0 || k==tam-1) mapa[i][k] = PAREDE;
+            else mapa[i][k] = VAZIO;
+        }
+    }
+    
+    j->x = 8; j->y = 1; j->direcao = '^';
+    mapa[j->x][j->y] = '^';
+    
+    mapa[5][3] = CAIXA;
+    mapa[5][4] = CAIXA;
+    mapa[5][5] = PORTA_FECHADA;
+    mapa[2][2] = CHAVE;
+    mapa[2][8] = ESCADA;
+
+    int mapa_ativo = 1;
+    while (mapa_ativo && j->vidas > 0) {
+        desenharJogo(mapa, tam, j, 1);
+        printf("Comando: ");
+        char cmd;
+        scanf(" %c", &cmd);
+
+        int px = j->x, py = j->y;
+        char nd = j->direcao;
+
+        if (cmd == 'w' || cmd == 'W') { px--; nd = '^'; }
+        else if (cmd == 's' || cmd == 'S') { px++; nd = 'V'; }
+        else if (cmd == 'a' || cmd == 'A') { py--; nd = '<'; }
+        else if (cmd == 'd' || cmd == 'D') { py++; nd = '>'; }
+        else if (cmd == 'i' || cmd == 'I') { interagirObjeto(mapa, tam, j, 1, NULL); }
+        else if (cmd == 'o' || cmd == 'O') { realizarAtaque(mapa, tam, j, NULL, 0); }
+
+        if (cmd=='w'||cmd=='W'||cmd=='s'||cmd=='S'||cmd=='a'||cmd=='A'||cmd=='d'||cmd=='D') {
+            if (mapa[px][py] == ESCADA) {
+                mapa_ativo = 0;
+            } else if (mapa[px][py] == VAZIO || mapa[px][py] == PORTA_ABERTA || mapa[px][py] == CHAVE) {
+                if (mapa[px][py] == CHAVE) j->chaves++;
+                mapa[j->x][j->y] = VAZIO;
+                j->x = px; j->y = py; j->direcao = nd;
+                mapa[j->x][j->y] = nd;
+            } else {
+                j->direcao = nd;
+                mapa[j->x][j->y] = nd;
+            }
+        }
+    }
+    liberarMapa(mapa, tam);
+}
+
+
+void rodarAndar2(Jogador *j) {
+    int tam = 15;
+    char **mapa = alocarMapa(tam);
+    j->chaves = 0;
+    int botao_pressionado = 0;
+
+    
+    for (int i=0; i<tam; i++) {
+        for (int k=0; k<tam; k++) {
+            if (i==0 || i==tam-1 || k==0 || k==tam-1) mapa[i][k] = PAREDE;
+            else mapa[i][k] = VAZIO;
+        }
+    }
+
+    j->x = 13; j->y = 7; j->direcao = '^';
+    mapa[j->x][j->y] = '^';
+
+    
+    mapa[10][7] = PORTA_FECHADA;
+    mapa[5][4] = PORTA_FECHADA;
+    mapa[12][2] = CHAVE;
+    mapa[8][12] = CHAVE;
+    mapa[2][2] = BOTAO;
+    mapa[1][13] = ESCADA;
+    mapa[9][6] = ESPINHO; mapa[9][8] = ESPINHO;
+
+    
+    int qtd_m = 2;
+    Monstro monstros[2] = {
+        {4, 7, MONSTRO_1, 1},
+        {3, 10, MONSTRO_1, 1}
+    };
+    mapa[4][7] = MONSTRO_1;
+    mapa[3][10] = MONSTRO_1;
+
+    int mapa_ativo = 1;
+    while (mapa_ativo && j->vidas > 0) {
+        desenharJogo(mapa, tam, j, 2);
+        printf("Comando: ");
+        char cmd;
+        scanf(" %c", &cmd);
+
+        int px = j->x, py = j->y;
+        char nd = j->direcao;
+        int mover_m = 0;
+
+        if (cmd == 'w' || cmd == 'W') { px--; nd = '^'; mover_m = 1; }
+        else if (cmd == 's' || cmd == 'S') { px++; nd = 'V'; mover_m = 1; }
+        else if (cmd == 'a' || cmd == 'A') { py--; nd = '<'; mover_m = 1; }
+        else if (cmd == 'd' || cmd == 'D') { py++; nd = '>'; mover_m = 1; }
+        else if (cmd == 'i' || cmd == 'I') { interagirObjeto(mapa, tam, j, 2, &botao_pressionado); }
+        else if (cmd == 'o' || cmd == 'O') { realizarAtaque(mapa, tam, j, monstros, qtd_m); mover_m = 1; }
+
+        if (cmd=='w'||cmd=='W'||cmd=='s'||cmd=='S'||cmd=='a'||cmd=='A'||cmd=='d'||cmd=='D') {
+            if (mapa[px][py] == ESCADA) {
+                mapa_ativo = 0;
+            } else if (mapa[px][py] == ESPINHO) {
+                j->vidas--;
+                
+                liberarMapa(mapa, tam);
+                rodarAndar2(j);
+                return;
+            } else if (mapa[px][py] == VAZIO || mapa[px][py] == PORTA_ABERTA || mapa[px][py] == CHAVE) {
+                if (mapa[px][py] == CHAVE) j->chaves++;
+                mapa[j->x][j->y] = VAZIO;
+                j->x = px; j->y = py; j->direcao = nd;
+                mapa[j->x][j->y] = nd;
+            } else {
+                j->direcao = nd;
+                mapa[j->x][j->y] = nd;
+            }
+        }
+
+        if (mover_m) {
+            int reiniciar = 0;
+            moverMonstros(mapa, tam, monstros, qtd_m, j, &reiniciar);
+            if (reiniciar) {
+                liberarMapa(mapa, tam);
+                rodarAndar2(j);
+                return;
+            }
+        }
+    }
+    liberarMapa(mapa, tam);
+}
+
+
+void rodarAndar3(Jogador *j) {
+    int tam = 25;
+    char **mapa = alocarMapa(tam);
+    j->chaves = 0;
+
+    for (int i=0; i<tam; i++) {
+        for (int k=0; k<tam; k++) {
+            if (i==0 || i==tam-1 || k==0 || k==tam-1) mapa[i][k] = PAREDE;
+            else mapa[i][k] = VAZIO;
+        }
+    }
+
+    j->x = 23; j->y = 12; j->direcao = '^';
+    mapa[j->x][j->y] = '^';
+
+    
+    mapa[20][12] = PORTA_FECHADA;
+    mapa[15][12] = PORTA_FECHADA;
+    mapa[8][12] = PORTA_FECHADA;
+    mapa[22][2] = CHAVE;
+    mapa[18][22] = CHAVE;
+    mapa[12][2] = CHAVE;
+
+    
+    int qtd_m = 3;
+    Monstro monstros[3] = {
+        {17, 12, MONSTRO_2, 1}, 
+        {12, 5, MONSTRO_1, 1},
+        {4, 12, BOSS, 1}        
+    };
+    mapa[17][12] = MONSTRO_2;
+    mapa[12][5] = MONSTRO_1;
+    mapa[4][12] = BOSS;
+
+    int mapa_ativo = 1;
+    while (mapa_ativo && j->vidas > 0) {
+        desenharJogo(mapa, tam, j, 3);
+        printf("Comando: ");
+        char cmd;
+        scanf(" %c", &cmd);
+
+        int px = j->x, py = j->y;
+        char nd = j->direcao;
+        int mover_m = 0;
+
+        if (cmd == 'w' || cmd == 'W') { px--; nd = '^'; mover_m = 1; }
+        else if (cmd == 's' || cmd == 'S') { px++; nd = 'V'; mover_m = 1; }
+        else if (cmd == 'a' || cmd == 'A') { py--; nd = '<'; mover_m = 1; }
+        else if (cmd == 'd' || cmd == 'D') { py++; nd = '>'; mover_m = 1; }
+        else if (cmd == 'i' || cmd == 'I') { interagirObjeto(mapa, tam, j, 3, NULL); }
+        else if (cmd == 'o' || cmd == 'O') { realizarAtaque(mapa, tam, j, monstros, qtd_m); mover_m = 1; }
+
+        if (cmd=='w'||cmd=='W'||cmd=='s'||cmd=='S'||cmd=='a'||cmd=='A'||cmd=='d'||cmd=='D') {
+            if (mapa[px][py] == VAZIO || mapa[px][py] == PORTA_ABERTA || mapa[px][py] == CHAVE) {
+                if (mapa[px][py] == CHAVE) j->chaves++;
+                mapa[j->x][j->y] = VAZIO;
+                j->x = px; j->y = py; j->direcao = nd;
+                mapa[j->x][j->y] = nd;
+            } else {
+                j->direcao = nd;
+                mapa[j->x][j->y] = nd;
+            }
+        }
+
+        if (mover_m) {
+            
+            if (!monstros[2].ativo) {
+                
+                printf("\n======================================================\n");
+                printf("       PARABENS! VOCE DERROTOU O BOSS FINAL!           \n");
+                printf("======================================================\n");
+                printf("Narrativa: Com o golpe final, o lorde das sombras cai \n");
+                printf("e a masmorra entra em colapso. O reino esta salvo!    \n");
+                printf("======================================================\n");
+                printf("Pressione ENTER para encerrar.");
+                getchar(); getchar();
+                mapa_ativo = 0;
+                break;
+            }
+
+            int reiniciar = 0;
+            moverMonstros(mapa, tam, monstros, qtd_m, j, &reiniciar);
+            if (reiniciar) {
+                liberarMapa(mapa, tam);
+                rodarAndar3(j);
+                return;
+            }
+        }
+    }
+    liberarMapa(mapa, tam);
+}
+
+
+void moverMonstros(char **mapa, int tam, Monstro *monstros, int qtd_monstros, Jogador *j, int *reiniciar) {
+    for (int i = 0; i < qtd_monstros; i++) {
+        if (!monstros[i].ativo) continue;
+
+        int mx = monstros[i].x;
+        int my = monstros[i].y;
+        int prox_mx = mx;
+        int prox_my = my;
+
+        if (monstros[i].tipo == MONSTRO_1) {
+
+            int dir = rand() % 4;
+            if (dir == 0) prox_mx--; else if (dir == 1) prox_mx++;
+            else if (dir == 2) prox_my--; else if (dir == 3) prox_my++;
+        } 
+        else if (monstros[i].tipo == MONSTRO_2) {
+            
+            int diff_x = j->x - mx;
+            int diff_y = j->y - my;
+            if (abs(diff_x) >= abs(diff_y)) {
+                prox_mx += (diff_x > 0) ? 1 : -1;
+            } else {
+                prox_my += (diff_y > 0) ? 1 : -1;
+            }
+        }
+        else if (monstros[i].tipo == BOSS) {
+            
+            if (abs(j->x - mx) <= 3 && abs(j->y - my) <= 3) {
+                prox_mx = (rand() % (tam - 4)) + 2;
+                prox_my = (rand() % (tam - 4)) + 2;
+            } else {
+                
+                int diff_x = j->x - mx;
+                if (diff_x != 0) prox_mx += (diff_x > 0) ? 1 : -1;
+            }
+        }
+
+        
+        if (prox_mx >= 0 && prox_mx < tam && prox_my >= 0 && prox_my < tam) {
+            if (prox_mx == j->x && prox_my == j->y) {
+                j->vidas--;
+                *reiniciar = 1;
+                return;
+            }
+            if (mapa[prox_mx][prox_my] == VAZIO) {
+                mapa[mx][my] = VAZIO;
+                monstros[i].x = prox_mx; monstros[i].y = prox_my;
+                mapa[prox_mx][prox_my] = monstros[i].tipo;
+            }
+        }
+    }
+}
+
+
+void realizarAtaque(char **mapa, int tam, Jogador *j, Monstro *monstros, int qtd_monstros) {
+    if (!j->tem_arma) return;
+
+    printf("\n[ATAQUE EXECUTADO COM %s!]\n", j->arma.nome);
+    
+    
+    for (int i = 0; i < tam; i++) {
+        for (int k = 0; k < tam; k++) {
+            int atingido = 0;
+
+            
+            if (j->arma.tipo == 1) {
+                if (j->direcao == '^' && (i == j->x-1 || i == j->x-2) && abs(k - j->y) <= 1) atingido = 1;
+                else if (j->direcao == 'V' && (i == j->x+1 || i == j->x+2) && abs(k - j->y) <= 1) atingido = 1;
+                else if (j->direcao == '<' && (k == j->y-1 || k == j->y-2) && abs(i - j->x) <= 1) atingido = 1;
+                else if (j->direcao == '>' && (k == j->y+1 || k == j->y+2) && abs(i - j->x) <= 1) atingido = 1;
+            }
+            
+            else if (j->arma.tipo == 2) {
+                if (j->direcao == '^' && k == j->y && i < j->x && i >= j->x-4) atingido = 1;
+                else if (j->direcao == 'V' && k == j->y && i > j->x && i <= j->x+4) atingido = 1;
+                else if (j->direcao == '<' && i == j->x && k < j->y && k >= j->y-4) atingido = 1;
+                else if (j->direcao == '>' && i == j->x && k > j->y && k <= j->y+4) atingido = 1;
+            }
+            
+            else if (j->arma.tipo == 3) {
+                if (abs(i - j->x) <= 1 && abs(k - j->y) <= 1 && !(i == j->x && k == j->y)) atingido = 1;
+            }
+
+            if (atingido) {
+                
+                if (mapa[i][k] == CAIXA) mapa[i][k] = VAZIO;
+                
+                
+                if (monstros != NULL) {
+                    for (int m = 0; m < qtd_monstros; m++) {
+                        if (monstros[m].ativo && monstros[m].x == i && monstros[m].y == k) {
+                            monstros[m].ativo = 0;
+                            mapa[i][k] = VAZIO;
+                            printf("Monstro %c foi eliminado!\n", monstros[m].tipo);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    getchar();
+}
+
+
+void interagirObjeto(char **mapa, int tam, Jogador *j, int andar, int *botao_pressionado) {
+    int fx = j->x;
+    int fy = j->y;
+
+    if (j->direcao == '^') fx--; else if (j->direcao == 'V') fx++;
+    else if (j->direcao == '<') fy--; else if (j->direcao == '>') fy++;
+
+    if (fx < 0 || fx >= tam || fy < 0 || fy >= tam) return;
+
+    
+    if (mapa[fx][fy] == PORTA_FECHADA) {
+        if (j->chaves > 0) {
+            j->chaves--;
+            mapa[fx][fy] = PORTA_ABERTA;
+            printf("\nPorta destrancada com sucesso!\n");
+        } else {
+            printf("\nVoce nao tem chaves suficientes para esta porta!\n");
+        }
+        getchar();
+    } 
+    
+    else if (mapa[fx][fy] == BOTAO && botao_pressionado != NULL && *botao_pressionado == 0) {
+        *botao_pressionado = 1;
+        printf("\n[BOTAO ATIVADO]: Uma barreira de espinhos sumiu do mapa!\n");
+        if (andar == 2) {
+            mapa[9][6] = VAZIO;
+            mapa[9][8] = VAZIO;
+        }
+        getchar();
+    }
+}
+
+
+char** alocarMapa(int tam) {
+    char **mapa = (char**)malloc(tam * sizeof(char*));
+    for (int i=0; i<tam; i++) mapa[i] = (char*)malloc(tam * sizeof(char));
+    return mapa;
+}
+
+void liberarMapa(char **mapa, int tam) {
+    for (int i=0; i<tam; i++) free(mapa[i]);
+    free(mapa);
+}
+
+void desenharJogo(char **mapa, int tam, Jogador *j, int andar) {
+    
+    #ifdef _WIN32
+        system("cls");
+    #else
+        system("clear");
+    #endif
+
+    printf("=== ANDAR: %d === | Vidas: %d | Chaves: %d | Arma: %s\n\n", andar, j->vidas, j->chaves, j->arma.nome);
+    for (int i = 0; i < tam; i++) {
+        for (int k = 0; k < tam; k++) {
+            printf("%c ", mapa[i][k]);
+        }
+        printf("\n");
+    }
+    printf("\n");
+}
