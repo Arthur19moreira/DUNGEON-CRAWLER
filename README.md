@@ -2,7 +2,7 @@ Integrantes: José Arthur Serrão Moreira, Lucas Souza Marques e Tiago Dos Santo
 
 # Dungeon Crawler
 
- História do Jogo
+ História do Jogo:
 
 Dungeon Crawler é um jogo de aventura desenvolvido em linguagem C. O jogador assume o papel de um herói que parte de sua vila em direção a uma masmorra misteriosa composta por três andares repletos de desafios.
 
@@ -30,8 +30,8 @@ Explorar os três andares da masmorra, coletar chaves, abrir portas, derrotar os
  Armas Disponíveis
 
  Espada
- Ataque em área à frente do personagem.
- Boa para combate próximo.
+*Ataque em área à frente do personagem.
+* Boa para combate próximo.
 
  Arco e Flecha
 * Ataque em linha reta.
@@ -41,47 +41,43 @@ Explorar os três andares da masmorra, coletar chaves, abrir portas, derrotar os
 * Ataque em todas as posições adjacentes ao jogador.
 * Ideal para cercos de inimigos.
 
-
-
  Símbolos do Jogo
 
  Símbolo           Significado                          
  
- *                 Parede                               
- #                 Espinho                              
- k                 Caixa                                
- O                 Botão                                
- D                 Porta Fechada                        
- =                 Porta Aberta                         
- @                 Chave                                
- L                 Escada                               
- X                 Monstro Tipo 1 (movimento aleatório) 
- Y                 Monstro Tipo 2 (persegue o jogador)  
- Z                 Boss Final                           
- N                 NPC da Vila                          
- >                 Jogador olhando para a direita       
- <                 Jogador olhando para a esquerda      
- ^                 Jogador olhando para cima            
- V                 Jogador olhando para baixo           
- Espaço em branco  Área livre para movimentação         
-
-
+ *   - Parede                               
+ #   -  Espinho                              
+ k   - Caixa                                
+ O   - Botão                                
+ D   - Porta Fechada                        
+ =   -  Porta Aberta                         
+ @   -  Chave                                
+ L   - Escada                               
+ X   - Monstro Tipo 1 (movimento aleatório) 
+ Y   -  Monstro Tipo 2 (persegue o jogador)  
+ Z   - Boss Final                           
+ N   - NPC da Vila                          
+ >   - Jogador olhando para a direita       
+ <   - Jogador olhando para a esquerda      
+ ^   -  Jogador olhando para cima            
+ V   - Jogador olhando para baixo           
+ Espaço em branco - Área livre para movimentação         
 
  Mecânicas do Jogo
 
-Chaves e Portas
+Chaves e Portas:
 
 O jogador deve coletar chaves para abrir portas bloqueadas e acessar novas áreas da masmorra.
 
- Espinhos
+ Espinhos:
 
 Ao pisar em um espinho, o jogador perde uma vida e o andar é reiniciado.
 
- Botões
+ Botões:
 
 Alguns botões removem obstáculos do mapa, abrindo novos caminhos para exploração.
 
- Monstros
+ Monstros:
 
  Monstro Tipo 1 (X)
 
