@@ -74,7 +74,7 @@ int main() {
         switch (opcao) {
             case 1: jogar(); break;
             case 2: exibirTutorial(); break;
-            case 3: printf("\nSaindo... Creditos: Desenvolvido pela equipe.\n"); break;
+            case 3: printf("\nSaindo... Creditos:Tiago dos santos,jose arthur serrao moreira, lucas sousa marques.\n"); break;
             default: printf("\nOpcao invalida!\n"); break;
         }
     }
